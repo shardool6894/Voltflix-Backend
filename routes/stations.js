@@ -1,0 +1,15 @@
+const express = require('express')
+const stationRouter = express.Router();
+const { returnAllStationsLiterally, returnAllStations, returnAvailableStations, returnInUseStations, returnFaultyStations, createStation, updateStation, deleteStation } = require('../controllers/stations')
+const { middleWareFn, requireAdmin } = require('../middleware/auth')
+const { validateRequest } = require('../middleware/zod')
+const { chargingStationValidation } = require('../zodSchemas/stations')
+stationRouter.get('/literallyAll',returnAllStationsLiterally)
+stationRouter.get('/all', returnAllStations)
+stationRouter.get('/available', returnAvailableStations)
+stationRouter.get('/inUse', returnInUseStations)
+stationRouter.get('/faulty', returnFaultyStations)
+stationRouter.post('/create', validateRequest(chargingStationValidation), middleWareFn, requireAdmin, createStation)
+stationRouter.put('/update', validateRequest(chargingStationValidation), middleWareFn, requireAdmin, updateStation)
+stationRouter.delete('/delete', middleWareFn, requireAdmin, deleteStation)
+module.exports = { stationRouter }
