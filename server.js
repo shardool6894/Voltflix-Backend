@@ -10,6 +10,7 @@ const { stationRouter } = require("./routes/stations");
 const { reportRouter } = require("./routes/reports");
 const { statRouter } = require("./routes/stats");
 const { authRouter } = require('./routes/auth')
+const { messageRouter } = require('./routes/messages')
 const { globalLimiter } = require('./middleware/rateLimiter')
 const { errorHandler } = require('./utils/error')
 const dotenv = require('dotenv').config()
@@ -31,6 +32,7 @@ app.use("/api/stations", stationRouter);
 app.use("/api/reports", reportRouter);
 app.use("/api/stats", statRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/messages', messageRouter);
 app.use(errorHandler);
 (async () => {
     try {

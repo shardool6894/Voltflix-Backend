@@ -1,4 +1,4 @@
-const { getAllReportsServices, createReportServices, updateReportStatusServices, dismissReportServices } = require('../services/reports')
+const { getAllReportsServices, createReportServices, updateReportStatusServices, dismissReportServices, getMyReportsServices } = require('../services/reports')
 const getAllReports = async (req, res, next) => {
     try {
         const { data, pagination } = await getAllReportsServices(req.query)
@@ -19,7 +19,8 @@ const createReport = async (req, res, next) => {
             issueType: req.body.issueType,
             description: req.body.description,
             reporterName: req.body.reporterName,
-            photo: req.file ? req.file.path : null
+            photo: req.file ? req.file.path : null,
+            reporter: req.user ? req.user.id : null
         }
         const data = await createReportServices(inputData)
         res.status(200).send({
@@ -58,4 +59,18 @@ const dismissReport = async (req, res, next) => {
         next(err)
     }
 }
-module.exports = { getAllReports, createReport, updateReportStatus, dismissReport }
+const getMyReports = async (req, res, next) => {
+    try {
+        const { data, summary, pagination } = await getMyReportsServices(req.user.id, req.query)
+        res.status(200).json({
+            success: true,
+            data: data,
+            summary: summary,
+            pagination: pagination
+        })
+    }
+    catch (err) {
+        next(err)
+    }
+}
+module.exports = { getAllReports, createReport, updateReportStatus, dismissReport, getMyReports }

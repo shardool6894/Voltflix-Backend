@@ -1,4 +1,5 @@
 const socket = require('socket.io')
+const Message = require('../models/message.js')
 const initializeSocket = (server) => {
     const io = socket(server, {
     cors : {
@@ -15,15 +16,17 @@ const initializeSocket = (server) => {
             const roomId = data.targetUserId;
             socket.join(roomId);
         })
-        socket.on("sendMessage",(data)=>{
+        socket.on("sendMessage",async (data)=>{
             // must send the message back to the room so that all users in the room can receive it
             const roomId = data.targetUserId;
-            socket.to(roomId).emit("receiveMessage",{
+            const payload = {
                 existingUserId : data.existingUserId,
                 existingUserName : data.existingUserName,
                 message : data.message,
                 time : new Date().toISOString()
-            });
+            }
+            socket.to(roomId).emit("receiveMessage",payload);
+            const message = await Message.create(payload);
         })
         socket.on("disconnect",(reason)=>{
             console.log(`User disconnected: ${reason}`);

@@ -39,6 +39,30 @@ const middleWareFn = (req, res, next) => {
     }
 };
 
+// Like middleWareFn, but a missing/expired/invalid token just means "anonymous" instead of an error.
+// Used on routes that work for everyone but attach the user when there is one (e.g. submitting a report).
+const optionalAuth = (req, res, next) => {
+    const attempts = [];
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        attempts.push(() => jwt.verify(authHeader.slice(7), process.env.JWT_Secret));
+    }
+    const { refreshToken } = req.signedCookies || {};
+    if (refreshToken) {
+        attempts.push(() => jwt.verify(refreshToken, process.env.JWT_Refresh_Secret));
+    }
+    for (const attempt of attempts) {
+        try {
+            const decoded = attempt();
+            req.user = { id: decoded.id || decoded._id, email: decoded.email, role: decoded.role };
+            break;
+        } catch (err) {
+            // try the next credential, otherwise stay anonymous
+        }
+    }
+    next();
+};
+
 const requireAdmin = (req, res, next) => {
     if (!req.user || req.user.role !== 'admin') {
         const err = new Error('Admin access required');
@@ -48,4 +72,4 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
-module.exports = { middleWareFn, requireAdmin };
+module.exports = { middleWareFn, optionalAuth, requireAdmin };

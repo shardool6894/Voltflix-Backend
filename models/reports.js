@@ -32,6 +32,12 @@ const issueReportSchema = new mongoose.Schema(
       default: null,
       trim: true,
     },
+    // Set only when the report was submitted by a signed-in user (anonymous reports stay null)
+    reporter: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "users",
+      default: null,
+    },
     photo: {
       type: String,
       default: null, 
@@ -46,6 +52,8 @@ const issueReportSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+issueReportSchema.index({ reporter: 1, createdAt: -1 });
 
 const issueReportModel = mongoose.model("IssueReport", issueReportSchema);
 module.exports = {issueReportModel}

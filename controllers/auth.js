@@ -97,4 +97,18 @@ const deleteProfile = async (req, res, next) => {
     }
 };
 
-module.exports = { login, register, getProfile, updateProfile, changePassword, deleteProfile }
+// The refresh token lives in an httpOnly cookie the browser's JS can't touch, so only the server can clear it.
+const logout = (req, res) => {
+    res.clearCookie('refreshToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        signed: true
+    })
+    res.status(200).json({
+        success: true,
+        message: "Logged out"
+    })
+}
+
+module.exports = { login, register, logout, getProfile, updateProfile, changePassword, deleteProfile }

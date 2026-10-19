@@ -1,3 +1,4 @@
+const mongoose = require('mongoose')
 const { issueReportModel } = require('../models/reports')
 const { chargingStationModel } = require('../models/stations')
 const { getCache, setCache, invalidateCache, invalidateCacheByPrefix, addGeoCache, searchGeoCache, removeGeoCache, fetchWithDeduplication, fetchStaleDataWhileRevalidate } = require('../utils/cache')
@@ -46,6 +47,7 @@ const createReportServices = async (data) => {
         description: data.description,
         reporterName: data.reporterName?.trim() || "Anonymous",
         photo: data.photo || 'No photo',
+        reporter: data.reporter || null,
     };
     const saveReport = await issueReportModel.create(report);
     const newKey = `reports:1:10:-createdAt`
@@ -112,4 +114,45 @@ const dismissReportServices = async (userId, reportId) => {
     invalidateCache(`stats:fixedThisWeekCount:${start.getDate()}-${start.getMonth() + 1}-${start.getFullYear()}`);
     return report;
 }
-module.exports = { getAllReportsServices, createReportServices, updateReportStatusServices, dismissReportServices }
+
+const REPORT_STATUSES = ['open', 'in_progress', 'resolved', 'closed'];
+const getMyReportsServices = async (userId, queryParams = {}) => {
+    const page = Math.max(parseInt(queryParams.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(queryParams.limit, 10) || 10, 1), 50);
+    const filter = { reporter: userId };
+    if (queryParams.status) {
+        if (!REPORT_STATUSES.includes(queryParams.status)) {
+            const err = new Error('Invalid status filter');
+            err.statusCode = 400;
+            throw err;
+        }
+        filter.status = queryParams.status;
+    }
+    const [data, totalItems, grouped] = await Promise.all([
+        issueReportModel.find(filter).sort('-createdAt').skip((page - 1) * limit).limit(limit).lean(),
+        issueReportModel.countDocuments(filter),
+        // Counts per status across ALL of the user's reports, independent of the filter/page
+        issueReportModel.aggregate([
+            { $match: { reporter: new mongoose.Types.ObjectId(userId) } },
+            { $group: { _id: '$status', count: { $sum: 1 } } },
+        ]),
+    ]);
+    const summary = { total: 0, open: 0, in_progress: 0, resolved: 0, closed: 0 };
+    for (const group of grouped) {
+        if (group._id in summary) {
+            summary[group._id] = group.count;
+            summary.total += group.count;
+        }
+    }
+    return {
+        data,
+        summary,
+        pagination: {
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+            currentPage: page,
+            itemsPerPage: limit,
+        },
+    };
+};
+module.exports = { getAllReportsServices, createReportServices, updateReportStatusServices, dismissReportServices, getMyReportsServices }
